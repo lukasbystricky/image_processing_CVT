@@ -31,7 +31,7 @@ This is a library to process grayscale images using Centroidal Voronoi Tesselati
 	plt.title("Image with 10 shades")
 	plt.imshow(data1, cmap='gray')
 ```
-![Reduced starfish](https://github.com/lukasbystricky/image_processing_CVT/blob/master/images/starfish_reduced.png "Reduced starfish")
+![Reduced starfish](https://github.com/lukasbystricky/image_processing_CVT/blob/master/images/starfish_reduce.png "Reduced starfish")
 
 ## Image Segmentation
 
