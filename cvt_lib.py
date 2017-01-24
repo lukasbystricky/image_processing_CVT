@@ -5,8 +5,8 @@ import numpy as np
 
 def read_image(imname):
 
-	# load image
-	data = misc.imread(imname) 
+	# load image, flatten to grayscale if needed
+	data = misc.imread(imname, True) 
 	
 	return data
 
@@ -20,6 +20,30 @@ def histogram(imdata):
 	plt.ylabel("Number of pixels")
 	
 	return 0
+
+def voronoi_zones(imdata, generators):
+	
+	shape = imdata.shape #shape[0] = # rows, shape[1] = # columns
+	zone_data = np.zeros(shape)
+	
+	#loop over all pixels
+	for i in range(0, shape[0]):
+		for j in range(0, shape[1]):
+			
+			min_dist = float("inf")
+			k_opt = 0
+			
+			# loop over generators
+			for k in range(len(generators)):
+				dist = abs(imdata[i,j] - generators[k])
+				
+				if dist < min_dist:
+					min_dist = dist
+					k_opt = k
+					
+			zone_data[i,j] = k_opt			
+	
+	return zone_data
 
 def cvt_render(imdata, generators):
 
@@ -117,3 +141,25 @@ def compute_energy(imdata, generators):
 			energy += min_dist
 					
 	return energy
+	
+def image_segmentation(imdata, n_segments, tol, max_iter):
+	
+	shape = imdata.shape #shape[0] = # rows, shape[1] = # columns
+	sketch = np.ones(shape)
+	generators = np.linspace(0,255,n_segments).tolist()
+	
+	(generators, E, it) = cvt(imdata, generators, tol, max_iter)
+	
+	zones = voronoi_zones(imdata, generators)
+	
+	#loop over all pixels, except boundary of image
+	for i in range(1, shape[0] - 1):
+		for j in range(1, shape[1] - 1):
+			
+			z = zones[i,j]
+			if not (z == zones[i-1,j] and z == zones[i+1,j] and z == zones[i,j-1] and
+						z == zones[i,j+1] and z == zones[i-1,j-1] and z == zones[i-1,j+1]
+						and z == zones[i+1,j-1] and z == zones[i-1,j+1]):
+							sketch[i,j] = 0
+	
+	return (sketch, generators)
