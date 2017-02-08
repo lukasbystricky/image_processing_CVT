@@ -105,3 +105,4 @@ This is a library to process grayscale images using Centroidal Voronoi Tesselati
       
     return 0
 ```
+![Cable Example](https://github.com/lukasbystricky/image_processing_CVT/blob/color_cvt/CVTExample.png "Cable Example")
