@@ -1,22 +1,23 @@
 from scipy import misc
 import numpy as np
 from numpy.linalg import norm
+import math as m
 
+#Loads image and returns array of RGB values
 def read_image(imname):
-    # load image, flatten to grayscale if needed
     data = misc.imread(imname, False, "RGB") 
     return data
 
+#Convert CVT data into viewable image
 def cvt_render(imdata, generators, weights, numw):
+    imshape = imdata.shape        #Stores [# of rows, # of columns, 3]
+    genshape = generators.shape   #       [# of generators, 3]
 
-    shape = imdata.shape #shape[0] = # rows, shape[1] = # columns
-    imdata_new = np.zeros(shape)
-    genshape = generators.shape
-    #imfloor = np.zeros(shape)    
+    imdata_new = np.zeros(imshape)
     
-    #loop over all pixels
-    for i in range(0, shape[0]):
-        for j in range(0, shape[1]):
+    #loop over all pixels of original image
+    for i in range(0, imshape[0]):
+        for j in range(0, imshape[1]):
             
             min_dist = float("inf")
             k_opt = 0
@@ -26,26 +27,31 @@ def cvt_render(imdata, generators, weights, numw):
                 dist = (weights[k]**numw) * \
                             norm(imdata[i,j] - generators[k])**2
                 
+                #Compute least energy from pixel to generator
                 if dist < min_dist:
                     min_dist = dist
                     k_opt = k
                     
+            #Give new image generator color
             imdata_new[i,j] = generators[k_opt]
-            #imfloor[i,j] = int(imdata[i,j])
 
-    return imdata_new#, imfloor
+    return imdata_new
 
-def cvt_step(imdata, generators_old, weights_old, numw, it):#, bin_count_old):
-    shape = imdata.shape #shape[0] = # rows, shape[1] = # columns
-    genshape = generators_old.shape
-    bins = np.zeros([genshape[0],3])
-    bin_count = np.zeros(genshape[0])
-    weights_new = np.zeros(genshape[0])
+#Performs a single CVT iteration
+def cvt_step(imdata, generators_old, weights_old, numw, it):
+    empty_gen = False                  #Flag to show empty generator
+    
+    imshape = imdata.shape             #Stores [# of rows, # of columns, 3]
+    genshape = generators_old.shape    #       [# of generators, 3]
+    
+    bins = np.zeros([genshape[0],3])   #For computing centroids
+    bin_count = np.zeros(genshape[0])  #Also serves as weights
+    
     generators_new = np.zeros([genshape[0],3])
     
-    #loop over all pixels
-    for i in range(0, shape[0]):
-        for j in range(0, shape[1]):
+    #loop over all pixels in original image
+    for i in range(0, imshape[0]):
+        for j in range(0, imshape[1]):
             
             min_dist = float("inf")
             k_opt = 0
@@ -55,65 +61,74 @@ def cvt_step(imdata, generators_old, weights_old, numw, it):#, bin_count_old):
                 
                 dist = (weights_old[k]**numw) * \
                             norm(imdata[i,j] - generators_old[k])**2
-                            
-                #file.write(str(it) +' '+ str(k) +' '+ str(dist) + '\n')
+                
+                #Compute least energy from pixel to generator
                 if dist < min_dist:
                     min_dist = dist
                     k_opt = k
-
-                  
+              
+            #Begin computing centroids
             bins[k_opt] += imdata[i,j]
             bin_count[k_opt] += 1
 
-    #Fixes divide by zero error    
-    for elem in range(len(bin_count)):
-        if bin_count[elem] == 0:
-            bin_count[elem] = 1#imdata.size/3/genshape[0]
-            bins[elem] = np.mean(generators_old, axis = 0)
+    #Prevents divide by zero error
+    for i in range(genshape[0]):
+        if bin_count[i] == 0:
+            empty_gen = True
+            bin_count[i] = 1
+            bins[i] = np.random.rand(3)
             
-    #print(generators_old)
+    #Finish computing centroids
     for i in range(genshape[0]):
         generators_new[i] = bins[i] / bin_count[i] 
-        weights_new[i] = bin_count[i]
-   # print(generators_new)
-    #file.close()
-    return generators_new, weights_new
 
-def  cvt(imdata, generators, max_iter, numw):
-    
+    #Perform unweighted CVT if a color is absent
+    if empty_gen:
+        print("Empty Gen, Retrying")    #Unnecessary printout
+        generators_new, bin_count = \
+                cvt_step(imdata, generators_new, bin_count, 0, it)
+            
+    return generators_new, bin_count
+
+#Main CVT manager function
+def cvt(imdata, generators, tol, max_iter, numw):
     it = 0
-    genshape = generators.shape   
-    weights = np.zeros(genshape[0]) + 1
-    
-    misc.imsave("itfolder/iteration0.png", \
-        cvt_render(imdata, generators, weights, numw))
-    while (it < max_iter):
-        generators, weights = cvt_step(imdata, generators, weights, numw, it)
-        it += 1
+    genshape = generators.shape            #Stores [# of generators, 3]
+    weights = np.zeros(genshape[0]) + 1    #Creates initial weights
 
-        misc.imsave("itfolder/iteration" + str(it) + ".png", \
-            cvt_render(imdata, generators, weights, numw))            
-        print("Iteration " + str(it))
+    E = []
+    E.append(compute_energy(imdata, generators, weights, numw))
+    dE = float("inf")
+    
+    #Repeats CVT iterations
+    while (it < max_iter and dE > tol):
+        generators, weights = cvt_step(imdata, generators, weights, numw, it)      
+        it += 1  
+        
+        E.append(compute_energy(imdata, generators, weights, numw))
+        dE = abs(E[it] - E[it-1])/E[it]    #Compute change in energy
+        print("Iteration " + str(it), dE)  #Unnecessary printout
 
     return generators, weights
     
+#Computes total energy of a set of generators
 def compute_energy(imdata, generators, weights, numw):
-    
-    imshape  = imdata.shape #shape[0] = # rows, shape[1] = # columns
-    genshape = generators.shape
+    imshape  = imdata.shape         #Stores [# of rows, # of columns, 3]
+    genshape = generators.shape     #       [# of generators, 3]
     energy =  0
 
-    #loop over all pixels
+    #loop over all pixels in original image
     for i in range(0, imshape[0]):
         for j in range(0, imshape[1]):
             
             min_dist = float("inf")
             
-            # loop over generators)
+            # loop over generators
             for k in range(genshape[0]):
                 dist = (weights[k]**numw) * \
                             norm(imdata[i,j] - generators[k])**2
                 
+                #Compute least energy from pixel to generator
                 if dist < min_dist:
                     min_dist = dist
                     
@@ -121,16 +136,19 @@ def compute_energy(imdata, generators, weights, numw):
                     
     return energy
 
-def image_segmentation(imdata, generators, max_iter, numw):
+#Image segmentation manager function
+def image_segmentation(imdata, generators, tol, max_iter, numw):
+    shape = imdata.shape            #Stores [# of rows, # of columns, 3]
+    sketch = np.ones(shape[0:2])    #Sketch is two dimensional
+    
+    #Perform CVT
+    generators, weights = cvt(imdata, generators, tol, max_iter, numw)
 
-    shape = imdata.shape #shape[0] = # rows, shape[1] = # columns
-    sketch = np.ones(shape[0:2])
-    r, c = shape[0]-1, shape[1]-1 #max row/collumn index
-    generators, weights = cvt(imdata, generators, max_iter, numw)
-
+    #Simplify CVT image
     zones = voronoi_zones(imdata, generators, weights, numw)
     
-    #loop over all pixels, except boundary of image
+    #loop over all interior pixels, checks for neighboring clusters
+    r, c = shape[0]-1, shape[1]-1   #Max row/collumn index
     for i in range(1, r):
         for j in range(1, c):
 
@@ -186,11 +204,11 @@ def image_segmentation(imdata, generators, max_iter, numw):
                 z == zones[r,i+1]):
             sketch[r,i] = 0 
         
-    return sketch
+    return sketch, generators, weights
  
+#Simplifies CVT data into 2D array
 def voronoi_zones(imdata, generators, weights, numw):
-
-    shape = imdata.shape #shape[0] = # rows, shape[1] = # columns
+    shape = imdata.shape                #Stores [# of rows, # of columns, 3]
     zone_data = np.zeros(shape[0:2])
 
     #loop over all pixels
@@ -204,15 +222,67 @@ def voronoi_zones(imdata, generators, weights, numw):
             for k in range(len(generators)):
                 dist = (weights[k]**numw) * \
                     norm(imdata[i,j] - generators[k])**2
-                    
+
+                #Find Generator with least energy                    
                 if dist < min_dist:
                     min_dist = dist
                     k_opt = k
 
+            #Create array with generator index, not generator itself
             zone_data[i,j] = k_opt			
 
     return zone_data
+ 
+#Averages image based on radial, weighted average
+def smoothing_avg(imdata, s, b):
+    shape = imdata.shape            #Stores [# of rows, # of columns, 3]
+    imdata_new = np.zeros(shape)
+    #rad = -s**2 * m.log(b)         #For use with Gaussian average
+    rad = s / b                     #For use with Computational Average
+    print("Averaging with radius of", rad)  #Unneccesary printout
     
+    #Loop over each pixel in original image
+    for i in range(0, shape[0]):
+        for j in range(0, shape[1]):
+            #Calculate average based on radius and smoothing parameter
+            imdata_new[i,j] = pxl_avg(imdata, i, j, rad, c_avg, s)
+
+    return imdata_new
+   
+#Two possible averaging functions
+def gauss(x,y,s):
+    return m.exp(-(x**2 + y**2)/s)
+def c_avg(x,y,s):
+    return s / (2*m.pi*(x**2 + y**2 + s**2)**(1.5))
+
+#Takes in index of a single pixel and averages it according to function
+def pxl_avg(imdata, xp, yp, r, avgf, s):
+    shape = imdata.shape
+    numer = np.zeros(3)
+    denom = 0
+
+    #Loops in largest square around circle radius
+    for rx in range(m.floor(-r), m.ceil(r+1)):
+        for ry in range(m.floor(-r), m.ceil(r+1)):
+            xpxl = xp + rx   
+            ypxl = yp + ry
+            
+            #Only consider pixel if it is inside image and circle
+            if xpxl >= 0 and xpxl < shape[0] and \
+               ypxl >= 0 and ypxl < shape[1] and \
+               r**2 >= rx**2 + ry**2 :
+                
+                   weight = avgf(rx, ry, s)
+                   numer += imdata[xpxl,ypxl] * weight
+                   denom += weight
+                   
+    pxl_avg = numer / denom
+    return pxl_avg
+ 
+#################################################
+####       Obsolete Averaging Algorithm      #### 
+#################################################
+ 
 def average_image(imdata):
     shape = imdata.shape #shape[0] = # rows, shape[1] = # columns
     imdata_new = np.ones(shape)
@@ -222,39 +292,33 @@ def average_image(imdata):
         for j in range(1, c):
             nz = np.array([imdata[i-1,j], imdata[i+1,j],  imdata[i,j-1], 
                           imdata[i,j+1], imdata[i-1,j-1],imdata[i-1,j+1],
-                          imdata[i+1,j-1], imdata[i-1,j+1]])
+                          imdata[i+1,j-1], imdata[i-1,j+1], imdata[i,j]])
             imdata_new[i,j] = np.mean(nz, axis = 0)
     
     #Check 4 corners
-    imdata_new[0,0] = np.mean(np.array([imdata[1,0],imdata[0,1],imdata[1,1]]), axis=0)
-    imdata_new[r,0] = np.mean(np.array([imdata[r,1],imdata[r-1,1],imdata[r-1,0]]), axis=0)
-    imdata_new[0,c] = np.mean(np.array([imdata[0,c-1],imdata[1,c-1],imdata[1,c]]), axis=0)
-    imdata_new[r,c] = np.mean(np.array([imdata[r,c-1],imdata[r-1,c-1],imdata[r-1,c]]), axis=0)
+    imdata_new[0,0] = np.mean(np.array([imdata[0,0],imdata[1,0],imdata[0,1],imdata[1,1]]), axis=0)
+    imdata_new[r,0] = np.mean(np.array([imdata[r,0],imdata[r,1],imdata[r-1,1],imdata[r-1,0]]), axis=0)
+    imdata_new[0,c] = np.mean(np.array([imdata[0,c],imdata[0,c-1],imdata[1,c-1],imdata[1,c]]), axis=0)
+    imdata_new[r,c] = np.mean(np.array([imdata[r,c],imdata[r,c-1],imdata[r-1,c-1],imdata[r-1,c]]), axis=0)
     
     #Check vertical edges
     for i in range(1,r):
         nz = np.array([imdata[i-1,0], imdata[i-1,1], imdata[i,1],
-                       imdata[i+1,1], imdata[i+1,0]])  
+                       imdata[i+1,1], imdata[i+1,0], imdata[i,0]])  
         imdata_new[i,0] = np.mean(nz, axis = 0)
 
         nz = np.array([imdata[i-1,c], imdata[i-1,c-1], imdata[i,c-1],
-                       imdata[i+1,c-1], imdata[i+1,c]])
+                       imdata[i+1,c-1], imdata[i+1,c], imdata[i,c]])
         imdata_new[i,c] = np.mean(nz, axis = 0)   
     
     #Check horizontal edges
     for i in range(1,c):
         nz = np.array([imdata[0,i-1], imdata[1,i-1], imdata[1,i],
-                       imdata[1,i+1], imdata[0,i+1]])
+                       imdata[1,i+1], imdata[0,i+1], imdata[0,i]])
         imdata_new[0,i] = np.mean(nz, axis = 0)  
 
         nz = np.array([imdata[r,i-1], imdata[r-1,i-1], imdata[r-1,i],
-                       imdata[r-1,i+1], imdata[r,i+1]])
+                       imdata[r-1,i+1], imdata[r,i+1], imdata[r,i]])
         imdata_new[r,i] = np.mean(nz, axis = 0) 
  
     return imdata_new
-
-
-
-
-
-
