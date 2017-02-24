@@ -16,17 +16,17 @@ This is a library to process images using Centroidal Voronoi Tesselations (CVTs)
     randgen3 = np.random.rand(12,3)*256 
       
     # Perform 3D CVT, Render Image, and Save Image 1
-    generators_new, E, it, weights = cvt3d.cvt(data, randgen1, 1e-4, 10, 0)    
+    generators_new, weights = cvt3d.cvt(data, randgen1, 1e-4, 10, 0)    
     data1 = cvt3d.cvt_render(data, generators_new, weights, 0)
     misc.imsave("cvt_images/" + imname + "4.png", data1)  
     
     # Perform 3D CVT, Render Image, and Save Image 2
-    generators_new, E, it, weights = cvt3d.cvt(data, randgen2, 1e-4, 10, 0)    
+    generators_new, weights = cvt3d.cvt(data, randgen2, 1e-4, 10, 0)    
     data2 = cvt3d.cvt_render(data, generators_new, weights, 0)
     misc.imsave("cvt_images/" + imname + "8.png", data2)  
 
     # Perform 3D CVT, Render Image, and Save Image 3
-    generators_new, E, it, weights = cvt3d.cvt(data, randgen3, 1e-4, 10, 0)    
+    generators_new, weights = cvt3d.cvt(data, randgen3, 1e-4, 10, 0)    
     data3 = cvt3d.cvt_render(data, generators_new, weights, 0)
     misc.imsave("cvt_images/" + imname + "12.png", data3)  
 
