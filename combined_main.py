@@ -5,7 +5,7 @@ import numpy as np
 def main(numgen, numw, sigma, beta):   
     
     #Load Image
-    imname = "quinn"
+    imname = "starfish"
     data = cvt3d.read_image("images/" + imname + ".png")
     
     #Create Initial Sample Points
@@ -33,4 +33,4 @@ def main(numgen, numw, sigma, beta):
 
     return 0
 
-main(6,0,1,0.2)
+main(2,0,1.5,0.05)
