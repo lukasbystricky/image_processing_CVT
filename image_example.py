@@ -1,45 +1,55 @@
-#!/usr/bin/env python
-
-import matplotlib.pyplot as plt
 import cvt_lib as cvt
+from scipy import misc
+import numpy as np
+import matplotlib.pyplot as plt
 
 def main():
- 
-	# load image
-	data = cvt.read_image("images/clock.jpg")
+    # load Image
+    imname = "cables"
+    data = cvt.read_image("images/" + imname + ".png")
+    
+    # Create initial generators
+    randgen1 = np.random.rand(4,3)*256
+    randgen2 = np.random.rand(8,3)*256
+    randgen3 = np.random.rand(12,3)*256 
+    
+    # Perform 3D CVT, Render Image, and Save Image 1
+    generators_new, weights = cvt.cvt(data, randgen1, 1e-4, 20, 0)    
+    data1 = cvt.cvt_render(data, generators_new, weights, 0)
+    misc.imsave("cvt_images/" + imname + "4.png", data1)  
 
-    # perform a CVT
-	generators = [5,10,20]
-	generators_new, E, it = cvt.cvt(data, generators, 1e-2, 5)
-	
-	# render image
-	data1 = cvt.cvt_render(data, generators_new)
-	
-	#histogram of colors
-	plt.figure(1)
-	plt.subplot(211)
-	cvt.histogram(data)
-	
-	# plot energy
-	plt.subplot(212)
-	plt.plot(E)	
-	plt.xlabel("Iteration")
-	plt.ylabel("Energy")
-		
-	plt.show()
-		
-    # show original image
-	plt.figure(2)
-	plt.subplot(121)
-	plt.imshow(data, cmap='gray')
+    # Perform 3D CVT, Render Image, and Save Image 2
+    generators_new, weights = cvt.cvt(data, randgen2, 1e-4, 20, 0)    
+    data2 = cvt.cvt_render(data, generators_new, weights, 0)
+    misc.imsave("cvt_images/" + imname + "8.png", data2)  
 
-	
-	# show new image
-	plt.subplot(122)
-	plt.imshow(data1, cmap='gray')
-	
-	plt.show()
+    # Perform 3D CVT, Render Image, and Save Image 3
+    generators_new, weights = cvt.cvt(data, randgen3, 1e-4, 20, 0)    
+    data3 = cvt.cvt_render(data, generators_new, weights, 0)
+    misc.imsave("cvt_images/" + imname + "12.png", data3)  
 
-	return 0
+    #Create Plot
+    plt.figure(1, figsize=(8, 6))
+    
+    plt.subplot(221)
+    plt.title("Original image")
+    plt.imshow(data)
+
+    plt.subplot(222)
+    plt.title("Image with 4 shades")
+    plt.imshow(data1/255)
+    
+    plt.subplot(223)
+    plt.title("Image with 8 shades")
+    plt.imshow(data2/255)
+    
+    plt.subplot(224)
+    plt.title("Image with 12 shades")
+    plt.imshow(data3/255)
+
+    plt.savefig("CVTExample.png")
+
+    return 0
 
 main()
+    
