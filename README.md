@@ -1,53 +1,57 @@
 # Image Processing using Centroidal Voronoi Tesselations
 
-This is a library to process images using Centroidal Voronoi Tesselations (CVTs). CVTs allow us to partition the image into regions of similar shades. This allows us to reduce the number of shades needed, thus reducing the space needed to store the image. We can also average images to reduce noise, and perform image segmentation as a method of edge detection
+This is a library to process images using Centroidal Voronoi Tesselations (CVTs). CVTs allow us to partition the image into regions of similar shades. This allows us to reduce the number of shades needed, thus reducing the space needed to store the image. We can also average images to reduce noise, and perform image segmentation as a method of edge detection. Additionally, a set of images with each containing part, but not the entierty of an image can be combined with a multichannel CVT.
 
 ## 3D CVT Color Reduction
 
+The core of the CVT algorithm sorts the RGB value of each pixel in an image according to the generator to which it is closest. The geometric centroid of these 3D points in RGB color space is calculated, with the result being used as generators for the next iteration. Over many iterations the total energy decreases, and the resulting image converges.
+
+In the event that a generator has no pixels assigned to its cluster, the generator is changed to a random color, and an extra CVT iteration is performed. This is of particular importance in weighted CVTs, discussed below.
+
 ```python
-    
-    # load Image
-    imname = "starfish"
-    data = cvt3d.read_image("images/" + imname + ".png")
+# load Image
+    imname = "cables"
+    data = cvt.read_image("images/" + imname + ".png")
     
     # Create initial generators
     randgen1 = np.random.rand(4,3)*256
     randgen2 = np.random.rand(8,3)*256
     randgen3 = np.random.rand(12,3)*256 
-      
-    # Perform 3D CVT, Render Image, and Save Image 1
-    generators_new, weights = cvt3d.cvt(data, randgen1, 1e-4, 10, 0)    
-    data1 = cvt3d.cvt_render(data, generators_new, weights, 0)
-    misc.imsave("cvt_images/" + imname + "4.png", data1)  
     
+    # Perform 3D CVT, Render Image, and Save Image 1
+    generators_new, weights = cvt.cvt(data, randgen1, 1e-4, 20, 0)    
+    data1 = cvt.cvt_render(data, generators_new, weights, 0)
+    misc.imsave("cvt_images/" + imname + "4.png", data1)  
+
     # Perform 3D CVT, Render Image, and Save Image 2
-    generators_new, weights = cvt3d.cvt(data, randgen2, 1e-4, 10, 0)    
-    data2 = cvt3d.cvt_render(data, generators_new, weights, 0)
+    generators_new, weights = cvt.cvt(data, randgen2, 1e-4, 20, 0)    
+    data2 = cvt.cvt_render(data, generators_new, weights, 0)
     misc.imsave("cvt_images/" + imname + "8.png", data2)  
 
     # Perform 3D CVT, Render Image, and Save Image 3
-    generators_new, weights = cvt3d.cvt(data, randgen3, 1e-4, 10, 0)    
-    data3 = cvt3d.cvt_render(data, generators_new, weights, 0)
+    generators_new, weights = cvt.cvt(data, randgen3, 1e-4, 20, 0)    
+    data3 = cvt.cvt_render(data, generators_new, weights, 0)
     misc.imsave("cvt_images/" + imname + "12.png", data3)  
 
     #Create Plot
     plt.figure(1, figsize=(8, 6))
+    
     plt.subplot(221)
     plt.title("Original image")
     plt.imshow(data)
 
     plt.subplot(222)
     plt.title("Image with 4 shades")
-    plt.imshow(data1)
+    plt.imshow(data1/255)
     
     plt.subplot(223)
     plt.title("Image with 8 shades")
-    plt.imshow(data2)
+    plt.imshow(data2/255)
     
     plt.subplot(224)
     plt.title("Image with 12 shades")
-    plt.imshow(data3)
-    
+    plt.imshow(data3/255)
+
     plt.savefig("CVTExample.png")
 ```
 ![Cable Example](https://github.com/lukasbystricky/image_processing_CVT/blob/color_cvt/CVTExample.png "Cable Example")
