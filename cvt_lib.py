@@ -84,7 +84,6 @@ def cvt_step(imdata, generators_old, weights_old, numw, it):
 
     #Perform unweighted CVT if a color is absent
     if empty_gen:
-        print("Empty Gen, Retrying")    #Unnecessary printout
         generators_new, bin_count = \
                 cvt_step(imdata, generators_new, bin_count, 0, it)
             
@@ -96,8 +95,6 @@ def cvt(imdata, generators, tol, max_iter, numw):
     genshape = generators.shape            #Stores [# of generators, 3]
     weights = np.zeros(genshape[0]) + 1    #Creates initial weights
    
-    #Unneccessary Image Save
-    misc.imsave("itfolder/iteration0.png", cvt_render(imdata, generators, weights, numw))
     E = []
     E.append(compute_energy(imdata, generators, weights, numw))
     dE = float("inf")
@@ -109,7 +106,6 @@ def cvt(imdata, generators, tol, max_iter, numw):
         
         E.append(compute_energy(imdata, generators, weights, numw))
         dE = abs(E[it] - E[it-1])/E[it]    #Compute change in energy
-        print("Iteration " + str(it), dE)  #Unnecessary printout
 
     return generators, weights
     
@@ -253,7 +249,7 @@ def smoothing_avg(imdata, s, b):
    
 #Two possible averaging functions
 def gauss(x,y,s):
-    return m.exp(-(x**2 + y**2)/s)
+    return m.exp(-(x**2 + y**2)/(s**2))
 def c_avg(x,y,s):
     return s / (2*m.pi*(x**2 + y**2 + s**2)**(1.5))
 
