@@ -2,6 +2,7 @@ from scipy import misc
 import numpy as np
 from numpy.linalg import norm
 import math as m
+from random import randint
 
 #Loads image and returns array of RGB values
 def read_image(imname):
@@ -107,7 +108,7 @@ def cvt(imdata, generators, tol, max_iter, numw):
         E.append(compute_energy(imdata, generators, weights, numw))
         dE = abs(E[it] - E[it-1])/E[it]    #Compute change in energy
 
-    return generators, weights
+    return generators, weights, E
     
 #Computes total energy of a set of generators
 def compute_energy(imdata, generators, weights, numw):
@@ -140,7 +141,7 @@ def image_segmentation(imdata, generators, tol, max_iter, numw):
     sketch = np.ones(shape[0:2])    #Sketch is two dimensional
     
     #Perform CVT
-    generators, weights = cvt(imdata, generators, tol, max_iter, numw)
+    generators, weights, evector = cvt(imdata, generators, tol, max_iter, numw)
 
     #Simplify CVT image
     zones = voronoi_zones(imdata, generators, weights, numw)
@@ -202,7 +203,7 @@ def image_segmentation(imdata, generators, tol, max_iter, numw):
                 z == zones[r,i+1]):
             sketch[r,i] = 0 
         
-    return sketch, generators, weights
+    return sketch, generators, weights, evector
  
 #Simplifies CVT data into 2D array
 def voronoi_zones(imdata, generators, weights, numw):
@@ -237,7 +238,7 @@ def smoothing_avg(imdata, s, b):
     imdata_new = np.zeros(shape)
     #rad = -s**2 * m.log(b)         #For use with Gaussian average
     rad = s / b                     #For use with Computational Average
-    print("Averaging with radius of", rad)  #Unneccesary printout
+    #print("Averaging with radius of", rad)  #Unneccesary printout
     
     #Loop over each pixel in original image
     for i in range(0, shape[0]):
@@ -294,7 +295,7 @@ def multi_channel(imdata_arr, generators, max_iter):
     while (it < max_iter):
         generators = mc_cvt_step(imdata_arr, imshape, generators, max_iter)      
         it += 1  
-        print("Iteration " + str(it))  #Unnecessary printout
+        #print("Iteration " + str(it))  #Unnecessary printout
 
     #Renders completed CVT image
     for i in range(0, imshape[0]):
@@ -363,7 +364,33 @@ def mc_cvt_step(imdata_arr, imshape, generators_old, max_iter):
         generators_new[i] = (bins[i] / bin_count[i])
         
     return generators_new
+   
+#Returns an optimal set of initial generator points
+def plusplus(imdata, numgen):
+    ppgens = np.zeros([numgen, 3]) - 1 
+    counter = 0
+    imshape = imdata.shape
+    
+    ppgens[0] = imdata[randpix(imshape)]
+    counter += 1
 
+    while (ppgens[numgen-1] == [-1,-1,-1]).all():
+        dist = []
+        randpt = imdata[randpix(imshape)]         #Picks random point in image
+        samppt = np.random.rand() * m.sqrt(3)     #Picks sample point
+        
+        for c in ppgens:                #Computes distance from random point
+            if (c != [-1,-1,-1]).all(): #  to each other generator
+               dist.append(norm( c - randpt ) )
+                                       #rejection sampling of shortest distance
+        if ( ( min(dist)**2 / 3 ) > samppt ):
+            ppgens[counter] = randpt
+            counter += 1          
+            
+    return ppgens
+    
+def randpix(imshape):
+    return randint(0,imshape[0]-1), randint(0,imshape[1]-1)
 #################################################
 ####       Obsolete Averaging Algorithm      #### 
 #################################################
