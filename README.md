@@ -170,7 +170,7 @@ Image averaging assists in this, effectively "smoothing" out rough edges by remo
 
 ```python
     #Load Image
-    imname = "earth2"
+    imname = "smalldog"
     data = cvt.read_image("images/" + imname + ".png")
     data3 = data2 = data1 = data
     
