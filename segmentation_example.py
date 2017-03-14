@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 def main():   
     #Load Image
-    imname = "earth2"
+    imname = "smalldog"
     data = cvt.read_image("images/" + imname + ".png")
     data3 = data2 = data1 = data
     
