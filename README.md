@@ -56,11 +56,63 @@ In the event that a generator has no pixels assigned to its cluster, the generat
 ```
 ![Cable Example](https://github.com/lukasbystricky/image_processing_CVT/blob/color_cvt/cvt_images/CVTExample.png "Cable Example")
 
+## Choosing Initial Generators with kmeans++
+
+In an ordinary CVT, initial generators are chosen randomly from 3D color space. This can result in an unideal rest position, as well as spending iterations to get to a reasonable position. The kmeans++ algorithm chooses initial points one at a time from existing set of colors. Each generator after the first is chosen randomly, with a probability proportional to its distance from existing points. This causes the initial generators to more accurately represent the image, which means fewer iterations are neccesary to reach a rest position. That being said, the selection process still involves randomness, and may not result in optimal generators every time. 
+
+```python
+    # load Image
+    imname = "starfish"
+    data = cvt.read_image("images/" + imname + ".png")
+    
+    # Create initial generators
+    randgen = np.random.rand(4,3)*256
+    optgen = cvt.plusplus(data,4)    
+    
+    # Perform 3D CVT, Render Image, and Save Image 1
+    generators_new, weights, E1 = cvt.cvt(data, randgen, 0, 3, 0)    
+    data1 = cvt.cvt_render(data, generators_new, weights, 0)
+    misc.imsave("cvt_images/" + imname + "_rand.png", data1)  
+
+    # Perform 3D CVT, Render Image, and Save Image 2
+    generators_new, weights, E2 = cvt.cvt(data, optgen, 0, 3, 0)    
+    data2 = cvt.cvt_render(data, generators_new, weights, 0)
+    misc.imsave("cvt_images/" + imname + "_plus.png", data2)  
+
+    #Create Plot
+    plt.figure(1, figsize=(8, 6.5))
+    
+    plt.subplot(221)
+    plt.title("Original image")
+    plt.imshow(data)
+
+    plt.subplot(222)
+    plt.title("Energy over Iteration Plot")
+    plt.plot(E1, color = 'r')
+    plt.plot(E2, color = 'b')
+    plt.xlabel("Iteration")
+    plt.ylabel("Energy")
+    
+    plt.subplot(223)
+    plt.title("Random Initial Generators")
+    plt.imshow(data1/256)
+    
+    plt.subplot(224)
+    plt.title("kmeans++ Initial Generators")
+    plt.imshow(data2/256)
+
+    plt.savefig("CVTExample.png")
+```
+
+![Starfish Example](https://github.com/lukasbystricky/image_processing_CVT/blob/color_cvt/cvt_images/WeightedCVTExample.png "Starfish Example")
+
 ## Weighted CVT Color Reduction
 
 Adding weights to generators influences how pixels are assigned to each. Typically the weights are dependent on some factor of the generator clusters themselves. In this case, the weight for each generator is the number of pixels assigned to it in the previous iteration, raised to a specific power. For negative exponents, this has the consequence of giving more prominent colors more influence, causing large colors to grow in size and small colors to shrink. For positive exponents, the reverse is true: small colors will grow while large colors shrink, in effect causing each color to have a similar size after repeated iterations. Larger exponents cause these effects to become more pronounced.
 
 Weighted CVTs, particularly those with negative exponents, will frequently cause colors to disapear entierly. This in turn causes the color to be weighted extremely highly, as it contains very few pixels. As a result, the absent color often dominates the image in the next iteration, causing the CVT image to be a solid color. To counter this, whenever a color is absent, and unweighted CVT is performed to ensure each color has an accurately representative number of pixels for weights.
+
+In the below example, the positive averaging weight has more equally distributed colors, where the negative averaging weight has one color covering a small area.
 
 ```python
     # load Image
